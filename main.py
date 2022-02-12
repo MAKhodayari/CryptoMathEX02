@@ -1,4 +1,5 @@
-from numpy import base_repr, binary_repr, zeros, matmul, array
+from numpy import base_repr, binary_repr, zeros, matmul, array, add, subtract
+from sympy import Matrix
 from pprint import pprint
 
 
@@ -30,6 +31,26 @@ def Decimal2BaseM(Rows, M, Len):
     return CharCodeM
 
 
+def Binary2Decimal(Rows):
+    CharCodeB = list()
+    for Row in Rows:
+        Temp = list()
+        for Num in Row:
+            Temp.append(int(Num, 2))
+        CharCodeB.append(Temp)
+    return CharCodeB
+
+
+def BaseM2Decimal(Rows, M):
+    CharCodeD = list()
+    for Row in Rows:
+        Temp = list()
+        for Num in Row:
+            Temp.append(int(Num, M))
+        CharCodeD.append(Temp)
+    return CharCodeD
+
+
 def HyperBlocking(Rows, K):
     HyperBlock = list()
     for Row in Rows:
@@ -42,17 +63,18 @@ def HyperBlocking(Rows, K):
                 if len(AppendRow) != 0:
                     Temp[i][0] = int(AppendRow[0])
                     AppendRow = AppendRow[1:]
-                # else:
-                #     break
             HyperTemp.append(Temp.tolist())
         HyperBlock.append(HyperTemp)
     return HyperBlock
 
 
-def Multiply(Rows, Key, M):
+def Multiply(Rows, Key, M, Mode):
     AffineHill = list()
     for Mat in Rows:
-        AffineHill.append(matmul(Key, Mat).tolist())
+        if Mode == 'E':
+            AffineHill.append(add(matmul(Key, Mat), [[1], [1], [2]]).tolist())
+        elif Mode == 'D':
+            AffineHill.append(matmul(Key, subtract(Mat, [[1], [1], [2]]).tolist()).tolist())
     AffineHillRes = list()
     for Row in AffineHill:
         Temp1 = list()
@@ -111,16 +133,24 @@ def ExtractInfo(KeyPath):
 
 
 def Encrypt():
-    KeyPath = input('Enter key location: ')
-    OriginalPath = input('Enter original file location: ')
-    EncryptedPath = input('Enter location to save encrypted file: ')
+    # KeyPath = input('Enter key location: ')
+    # OriginalPath = input('Enter original file location: ')
+    # EncryptedPath = input('Enter location to save encrypted file: ')
+    KeyPath = r'C:\Users\User\Desktop\Key.txt'
+    OriginalPath = r'C:\Users\User\Desktop\1.txt'
+    EncryptedPath = r'C:\Users\User\Desktop'
     M, InitialBlockSize, XORKey, HyperBlockSize, HyperBlockKey = ExtractInfo(KeyPath)
     CharD = FileHandle(OriginalPath)
+    print(CharD)
     CharXOR = BlockXOR(CharD, XORKey)
+    print(CharXOR)
     ReqLenM = len(base_repr(2 ** InitialBlockSize - 1, M))
     CharM = Decimal2BaseM(CharXOR, M, ReqLenM)
+    print(CharM)
     CharH = HyperBlocking(CharM, HyperBlockSize)
-    CharAH = Multiply(CharH, HyperBlockKey, M)
+    print(CharH)
+    CharAH = Multiply(CharH, HyperBlockKey, M, 'E')
+    print(CharAH)
     ReqLenB = len(binary_repr(M - 1))
     with open(EncryptedPath + '\Encrypted.txt', 'w') as EncryptedFile:
         for Row in CharAH:
@@ -132,6 +162,58 @@ def Encrypt():
 
 
 def Decrypt():
+    # KeyPath = input('Enter key location: ')
+    # EncryptedPath = input('Enter Encrypted file location: ')
+    # DencryptedPath = input('Enter location to save decrypted file: ')
+    KeyPath = r'C:\Users\User\Desktop\Key.txt'
+    EncryptedPath = r'C:\Users\User\Desktop\Encrypted.txt'
+    DencryptedPath = r'C:\Users\User\Desktop'
+    M, InitialBlockSize, XORKey, HyperBlockSize, HyperBlockKey = ExtractInfo(KeyPath)
+    with open(EncryptedPath, 'r') as EncryptedFile:
+        CharB = list()
+        for Row in EncryptedFile.readlines():
+            CharB.append(Row.strip().split(' '))
+    print(CharB)
+    CharD = Binary2Decimal(CharB)
+    print(CharD)
+    CharH = list()
+    for Row in CharD:
+        Temp = list()
+        for i in range(0, len(Row), HyperBlockSize):
+            Temp.append(array(Row[i:i + HyperBlockSize]).reshape((3, 1)).tolist())
+        CharH.append(Temp)
+    print(CharH)
+    HyperBlockKeyInv = Matrix(HyperBlockKey).inv_mod(HyperBlockSize).tolist()
+    print(HyperBlockKeyInv)
+    CharAH = Multiply(CharH, HyperBlockKeyInv, M, 'D')
+    print(CharAH)
+    Temp1 = list()
+    for Char in CharAH:
+        Temp1.append(array(Char).reshape(1, -1).tolist())
+    print(Temp1)
+    Temp2 = list()
+    for Mat in Temp1:
+        for Row in Mat:
+            Temp2.append(Row)
+    print(Temp2)
+    Temp3 = list()
+    for Row in Temp2:
+        Temp4 = list()
+        for Num in Row:
+            Temp4.append(str(Num))
+        Temp3.append(Temp4)
+    print(Temp3)
+    CharM = list()
+    for i in range(len(Temp3)):
+        Temp6 = list()
+        for j in range(0, len(Temp3[i]), 4):
+            Temp6.append(''.join(list(Temp3[i][j:j + 4])))
+        CharM.append(Temp6)
+    print(CharM)
+    CharD = BaseM2Decimal(CharM, M)
+    print(CharD)
+    CharXOR = BlockXOR(CharD, XORKey)
+    print(CharXOR)
     pass
 
 
@@ -169,7 +251,8 @@ if __name__ == '__main__':
     print('Welcome.')
     print('Please select your desired action from the list below.' + '\n')
     Menu()
-    Option = input('Which one do you choose? Option: ')
+    # Option = input('Which one do you choose? Option: ')
+    Option = '3'
     print()
     while Option != '0':
         if Option == '1':
