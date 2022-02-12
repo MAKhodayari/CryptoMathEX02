@@ -72,9 +72,9 @@ def Multiply(Rows, Key, M, Mode):
     AffineHill = list()
     for Mat in Rows:
         if Mode == 'E':
-            AffineHill.append(add(matmul(Key, Mat), [[1], [1], [2]]).tolist())
+            AffineHill.append(matmul(Key, Mat).tolist())
         elif Mode == 'D':
-            AffineHill.append(matmul(Key, subtract(Mat, [[1], [1], [2]]).tolist()).tolist())
+            AffineHill.append(matmul(Key, Mat).tolist())
     AffineHillRes = list()
     for Row in AffineHill:
         Temp1 = list()
@@ -164,10 +164,10 @@ def Encrypt():
 def Decrypt():
     # KeyPath = input('Enter key location: ')
     # EncryptedPath = input('Enter Encrypted file location: ')
-    # DencryptedPath = input('Enter location to save decrypted file: ')
+    # DecryptedPath = input('Enter location to save decrypted file: ')
     KeyPath = r'C:\Users\User\Desktop\Key.txt'
     EncryptedPath = r'C:\Users\User\Desktop\Encrypted.txt'
-    DencryptedPath = r'C:\Users\User\Desktop'
+    DecryptedPath = r'C:\Users\User\Desktop'
     M, InitialBlockSize, XORKey, HyperBlockSize, HyperBlockKey = ExtractInfo(KeyPath)
     with open(EncryptedPath, 'r') as EncryptedFile:
         CharB = list()
@@ -183,7 +183,8 @@ def Decrypt():
             Temp.append(array(Row[i:i + HyperBlockSize]).reshape((3, 1)).tolist())
         CharH.append(Temp)
     print(CharH)
-    HyperBlockKeyInv = Matrix(HyperBlockKey).inv_mod(HyperBlockSize).tolist()
+    HyperBlockKeyInv = Matrix(HyperBlockKey).inv_mod(M).tolist()
+    print(HyperBlockKey)
     print(HyperBlockKeyInv)
     CharAH = Multiply(CharH, HyperBlockKeyInv, M, 'D')
     print(CharAH)
@@ -207,14 +208,19 @@ def Decrypt():
     for i in range(len(Temp3)):
         Temp6 = list()
         for j in range(0, len(Temp3[i]), 4):
-            Temp6.append(''.join(list(Temp3[i][j:j + 4])))
+            if len(Temp3[i][j:j + 4]) == 4:
+                Temp6.append(''.join(Temp3[i][j:j + 4]))
         CharM.append(Temp6)
     print(CharM)
     CharD = BaseM2Decimal(CharM, M)
     print(CharD)
     CharXOR = BlockXOR(CharD, XORKey)
     print(CharXOR)
-    pass
+    with open(DecryptedPath + '\Decrypted.txt', 'w') as DecryptedFile:
+        for Row in CharXOR:
+            for Num in Row:
+                DecryptedFile.write(chr(Num))
+            DecryptedFile.write('\n')
 
 
 def DiscoverKey():
@@ -252,7 +258,7 @@ if __name__ == '__main__':
     print('Please select your desired action from the list below.' + '\n')
     Menu()
     # Option = input('Which one do you choose? Option: ')
-    Option = '3'
+    Option = '2'
     print()
     while Option != '0':
         if Option == '1':
