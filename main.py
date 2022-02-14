@@ -145,9 +145,9 @@ def GenerateKey():
     HyperBlockSize = input('Enter your desired number for hyper block size: ')
     HyperBlockKey = input('Enter Affine-Hill key values: ').split(' ')
     AffineHillB = input('Enter Affine-Hill B values: ').split(' ')
+    KeyPath = input('Enter location to save key file: ') + '\Key.txt'
     AffineHillKey = KeyStr2Int(HyperBlockKey, HyperBlockSize)
     InitialBlockSize = '8'
-    KeyPath = input('Enter location to save key file: ') + '\Key.txt'
     with open(KeyPath, 'w') as KeyFile:
         KeyFile.write('M (Base Number): ' + M + '\n')
         KeyFile.write('Initial block size: ' + InitialBlockSize + '\n')
@@ -216,7 +216,7 @@ def Decrypt():
     KeyPath = input('Enter key location: ')
     EncryptedPath = input('Enter Encrypted file location: ')
     # Save location for decrypted text file
-    # DecryptedPath = input('Enter location to save decrypted file: ') + '\Decrypted.txt'
+    DecryptedPath = input('Enter location to save decrypted file: ') + '\Decrypted.txt'
     ASCIIDecryptedPath = input('Enter location to save ASCII decrypted file: ') + '\DecryptedASCII.txt'
     M, InitialBlockSize, XORKey, HyperBlockSize, AffineHillKey, AffineHillB = ExtractKeyInfo(KeyPath)
     CharB = ExtractFileInfo(EncryptedPath, 'EB')
@@ -230,9 +230,12 @@ def Decrypt():
     CharXOR = BlockXOR(CharD, XORKey)
     # This part is used to write decrypted text file
     # with open(DecryptedPath, 'w') as DecryptedFile:
-    #     for Row in CharXOR:
-    #         for Num in Row:
-    #             DecryptedFile.write(chr(Num))
+    #     for i in range(len(CharXOR)):
+    #         for j in range(len(CharXOR[i])):
+    #             if CharXOR[i][j] == XORKey and j == len(CharXOR[i]) - 1:
+    #                 pass
+    #             else:
+    #                 DecryptedFile.write(chr(CharXOR[i][j]))
     #         DecryptedFile.write('\n')
     with open(ASCIIDecryptedPath, 'w') as ASCIIDecryptedFile:
         for i in range(len(CharXOR)):
