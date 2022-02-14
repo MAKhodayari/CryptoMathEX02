@@ -1,13 +1,20 @@
-from numpy import base_repr, binary_repr, zeros, matmul, array, add, subtract
+from numpy import binary_repr, base_repr
+from numpy import add, subtract, matmul
+from numpy import array, zeros
 from sympy import Matrix
 
 
-def FileHandle(Path):
-    with open(Path, 'rb') as File:
-        CharCodeD = list()
-        for Row in File.readlines():
-            CharCodeD.append(list(Row.strip()))
-    return CharCodeD
+def ExtractFileInfo(Path, Mode):
+    CharCode = list()
+    if Mode == 'EA':
+        with open(Path, 'rb') as File:
+            for Row in File.readlines():
+                CharCode.append(list(Row.strip()))
+    elif Mode == 'EB':
+        with open(Path, 'r') as File:
+            for Row in File.readlines():
+                CharCode.append(Row.strip().split(' '))
+    return CharCode
 
 
 def BlockXOR(Rows, Key):
@@ -20,50 +27,50 @@ def BlockXOR(Rows, Key):
     return CharCodeXOR
 
 
-def ChangeBase(Rows, Mode, M=1, Len=0):
+def ChangeBase(Rows, Mode, Base=1, Len=0):
     CharCode = list()
     for Row in Rows:
         Temp = list()
         for Num in Row:
             if Mode == 'D2M':
-                Temp.append(base_repr(Num, M).zfill(Len))
+                Temp.append(base_repr(Num, Base).zfill(Len))
             elif Mode == 'B2D':
                 Temp.append(int(Num, 2))
             elif Mode == 'M2D':
-                Temp.append(int(Num, M))
+                Temp.append(int(Num, Base))
         CharCode.append(Temp)
     return CharCode
 
 
-def HyperBlocking(Rows, K):
+def SoloBlock(Rows, Size):
     HyperBlock = list()
     for Row in Rows:
-        AppendRow = ''.join(Row)
-        HyperTemp = list()
-        Count = (len(AppendRow) // K) + 1
+        AppendedRow = ''.join(Row)
+        BlockTemp = list()
+        Count = (len(AppendedRow) // Size) + 1
         for c in range(Count):
-            Temp = zeros((K, 1), int)
-            for i in range(K):
-                if len(AppendRow) != 0:
-                    Temp[i][0] = int(AppendRow[0])
-                    AppendRow = AppendRow[1:]
-            HyperTemp.append(Temp.tolist())
-        HyperBlock.append(HyperTemp)
+            Temp = zeros((Size, 1), int)
+            for i in range(Size):
+                if len(AppendedRow) != 0:
+                    Temp[i][0] = int(AppendedRow[0])
+                    AppendedRow = AppendedRow[1:]
+            BlockTemp.append(Temp.tolist())
+        HyperBlock.append(BlockTemp)
     return HyperBlock
 
 
-def Multiply(Rows, Key, B, M, Mode):
-    AffineHill = list()
+def AffineHill(Rows, Key, B, Base, Mode):
+    Temp = list()
     for Mat in Rows:
         if Mode == 'E':
-            AffineHill.append(add(matmul(Key, Mat), B).tolist())
+            Temp.append(add(matmul(Key, Mat), B).tolist())
         elif Mode == 'D':
-            AffineHill.append(matmul(Key, subtract(Mat, B)).tolist())
-    AffineHillRes = Remainder(AffineHill, M)
+            Temp.append(matmul(Key, subtract(Mat, B)).tolist())
+    AffineHillRes = ModularDivision(Temp, Base)
     return AffineHillRes
 
 
-def Remainder(Rows, M):
+def ModularDivision(Rows, Divisor):
     Remainders = list()
     for Row in Rows:
         Temp1 = list()
@@ -72,7 +79,7 @@ def Remainder(Rows, M):
             for Col in Mat:
                 Temp3 = list()
                 for Num in Col:
-                    Temp3.append(Num % M)
+                    Temp3.append(Num % Divisor)
                 Temp2.append(Temp3)
             Temp1.append(Temp2)
         Remainders.append(Temp1)
@@ -80,18 +87,26 @@ def Remainder(Rows, M):
 
 
 def KeyStr2Int(KeyStr, Size):
-    KeyInt = zeros((int(Size), int(Size)), int)
-    for i in range(int(Size)):
-        for j in range(int(Size)):
+    Size = int(Size)
+    KeyInt = zeros((Size, Size), int)
+    for i in range(Size):
+        for j in range(Size):
             KeyInt[i][j] = int(KeyStr.pop(0))
     KeyInt = KeyInt.tolist()
     return KeyInt
 
 
-def ChangeShape(Rows):
+def ChangeShape(Rows, Mode, Size=1):
     NewShape = list()
-    for Char in Rows:
-        NewShape.append(array(Char).reshape(1, -1).tolist())
+    if Mode == '1X':
+        for Char in Rows:
+            NewShape.append(array(Char).reshape(Size, -1).tolist())
+    elif Mode == 'S1':
+        for Row in Rows:
+            Temp = list()
+            for i in range(0, len(Row), Size):
+                Temp.append(array(Row[i:i + Size]).reshape((Size, 1)).tolist())
+            NewShape.append(Temp)
     return NewShape
 
 
@@ -113,13 +128,13 @@ def StringMatrix(Rows):
     return NewMatrix
 
 
-def Blocking(Rows):
+def GroupBlock(Rows, Size):
     NewBlock = list()
     for i in range(len(Rows)):
         Temp = list()
-        for j in range(0, len(Rows[i]), 4):
-            if len(Rows[i][j:j + 4]) == 4:
-                Temp.append(''.join(Rows[i][j:j + 4]))
+        for j in range(0, len(Rows[i]), Size):
+            if len(Rows[i][j:j + Size]) == Size:
+                Temp.append(''.join(Rows[i][j:j + Size]))
         NewBlock.append(Temp)
     return NewBlock
 
@@ -128,9 +143,9 @@ def GenerateKey():
     M = input('Enter your desired prime odd number for M: ')
     XORKey = input('Enter your desired key for XOR with each block: ')
     HyperBlockSize = input('Enter your desired number for hyper block size: ')
-    AffineHillKey = input('Enter Affine-Hill key values: ').split(' ')
+    HyperBlockKey = input('Enter Affine-Hill key values: ').split(' ')
     AffineHillB = input('Enter Affine-Hill B values: ').split(' ')
-    HyperBlockKey = KeyStr2Int(AffineHillKey, HyperBlockSize)
+    AffineHillKey = KeyStr2Int(HyperBlockKey, HyperBlockSize)
     InitialBlockSize = '8'
     KeyPath = input('Enter location to save key file: ') + '\Key.txt'
     with open(KeyPath, 'w') as KeyFile:
@@ -138,57 +153,50 @@ def GenerateKey():
         KeyFile.write('Initial block size: ' + InitialBlockSize + '\n')
         KeyFile.write('XOR key: ' + XORKey + '\n')
         KeyFile.write('Hyper block size: ' + HyperBlockSize + '\n')
-        KeyFile.write('Hyper block key: ' + '\n')
-        for Row in HyperBlockKey:
+        KeyFile.write('Affine-Hill key: ' + '\n')
+        for Row in AffineHillKey:
             for Num in Row:
                 KeyFile.write(str(Num) + ' ')
             KeyFile.write('\n')
-        KeyFile.write('Hyper block b: ' + '\n')
+        KeyFile.write('Affine-Hill b: ' + '\n')
         for Num in AffineHillB:
             KeyFile.write(Num + '\n')
 
 
-def ExtractInfo(KeyPath):
-    with open(KeyPath, 'r') as KeyFile:
+def ExtractKeyInfo(Path):
+    with open(Path, 'r') as File:
         Info = list()
-        for Row in KeyFile.readlines():
+        for Row in File.readlines():
             Info.append(Row.strip().split(' '))
     M = int(Info[0][-1])
     InitialBlockSize = int(Info[1][-1])
     XORKey = int(Info[2][-1])
     HyperBlockSize = int(Info[3][-1])
-    HyperBlockKey = list()
+    AffineHillKey = list()
     for Row in Info[5:5 + HyperBlockSize]:
-        HyperBlockKey.append(list(Row))
-    for i in range(len(HyperBlockKey)):
-        for j in range(len(HyperBlockKey[i])):
-            HyperBlockKey[i][j] = int(HyperBlockKey[i][j])
-    HyperBlockB = list()
+        AffineHillKey.append(list(Row))
+    for i in range(len(AffineHillKey)):
+        for j in range(len(AffineHillKey[i])):
+            AffineHillKey[i][j] = int(AffineHillKey[i][j])
+    AffineHillB = list()
     for Num in Info[6 + HyperBlockSize:]:
-        HyperBlockB.append(int(Num[0]))
-    HyperBlockB = array(HyperBlockB).reshape(-1, 1).tolist()
-    return M, InitialBlockSize, XORKey, HyperBlockSize, HyperBlockKey, HyperBlockB
+        AffineHillB.append(int(Num[0]))
+    AffineHillB = array(AffineHillB).reshape(-1, 1).tolist()
+    return M, InitialBlockSize, XORKey, HyperBlockSize, AffineHillKey, AffineHillB
 
 
 def Encrypt():
-    # KeyPath = input('Enter key location: ')
-    # OriginalPath = input('Enter original file location: ')
-    # EncryptedPath = input('Enter location to save encrypted file: ') + '\Encrypted.txt'
-    KeyPath = r'C:\Users\User\Desktop\Key.txt'
-    OriginalPath = r'C:\Users\User\Desktop\1.txt'
-    EncryptedPath = r'C:\Users\User\Desktop' + '\Encrypted.txt'
-    M, InitialBlockSize, XORKey, HyperBlockSize, HyperBlockKey, HyperBlockB = ExtractInfo(KeyPath)
-    CharD = FileHandle(OriginalPath)
-    print(CharD)
+    KeyPath = input('Enter key location: ')
+    FilePath = input('Enter original file location: ')
+    ASCIIFilePath = input('Enter location to save original file in ASCII format: ') + '\OriginalASCII.txt'
+    EncryptedPath = input('Enter location to save encrypted file: ') + '\Encrypted.txt'
+    M, InitialBlockSize, XORKey, HyperBlockSize, AffineHillKey, AffineHillB = ExtractKeyInfo(KeyPath)
+    CharD = ExtractFileInfo(FilePath, 'EA')
     CharXOR = BlockXOR(CharD, XORKey)
-    print(CharXOR)
     ReqLenM = len(base_repr(2 ** InitialBlockSize - 1, M))
     CharM = ChangeBase(CharXOR, 'D2M', M, ReqLenM)
-    print(CharM)
-    CharH = HyperBlocking(CharM, HyperBlockSize)
-    print(CharH)
-    CharAH = Multiply(CharH, HyperBlockKey, HyperBlockB, M, 'E')
-    print(CharAH)
+    CharH = SoloBlock(CharM, HyperBlockSize)
+    CharAH = AffineHill(CharH, AffineHillKey, AffineHillB, M, 'E')
     ReqLenB = len(binary_repr(M - 1))
     with open(EncryptedPath, 'w') as EncryptedFile:
         for Row in CharAH:
@@ -197,46 +205,43 @@ def Encrypt():
                     for Num in Col:
                         EncryptedFile.write(binary_repr(Num).zfill(ReqLenB) + ' ')
             EncryptedFile.write('\n')
+    with open(ASCIIFilePath, 'w') as ASCIIFile:
+        for Row in CharD:
+            for Num in Row:
+                ASCIIFile.write(str(Num) + ' ')
+            ASCIIFile.write('\n')
 
 
 def Decrypt():
-    # KeyPath = input('Enter key location: ')
-    # EncryptedPath = input('Enter Encrypted file location: ')
+    KeyPath = input('Enter key location: ')
+    EncryptedPath = input('Enter Encrypted file location: ')
+    # Save location for decrypted text file
     # DecryptedPath = input('Enter location to save decrypted file: ') + '\Decrypted.txt'
-    KeyPath = r'C:\Users\User\Desktop\Key.txt'
-    EncryptedPath = r'C:\Users\User\Desktop\Encrypted.txt'
-    DecryptedPath = r'C:\Users\User\Desktop' + '\Decrypted.txt'
-    M, InitialBlockSize, XORKey, HyperBlockSize, HyperBlockKey, HyperBlockB = ExtractInfo(KeyPath)
-    with open(EncryptedPath, 'r') as EncryptedFile:
-        CharB = list()
-        for Row in EncryptedFile.readlines():
-            CharB.append(Row.strip().split(' '))
-    print(CharB)
+    ASCIIDecryptedPath = input('Enter location to save ASCII decrypted file: ') + '\DecryptedASCII.txt'
+    M, InitialBlockSize, XORKey, HyperBlockSize, AffineHillKey, AffineHillB = ExtractKeyInfo(KeyPath)
+    CharB = ExtractFileInfo(EncryptedPath, 'EB')
     CharD = ChangeBase(CharB, 'B2D')
-    print(CharD)
-    CharH = list()
-    for Row in CharD:
-        Temp = list()
-        for i in range(0, len(Row), HyperBlockSize):
-            Temp.append(array(Row[i:i + HyperBlockSize]).reshape((3, 1)).tolist())
-        CharH.append(Temp)
-    print(CharH)
-    HyperBlockKeyInv = Matrix(HyperBlockKey).inv_mod(M).tolist()
-    print(HyperBlockKey)
-    print(HyperBlockKeyInv)
-    CharAH = Multiply(CharH, HyperBlockKeyInv, HyperBlockB, M, 'D')
-    print(CharAH)
-    CharM = Blocking(StringMatrix(ReduceDepth(ChangeShape(CharAH))))
-    print(CharM)
+    CharH = ChangeShape(CharD, 'S1', HyperBlockSize)
+    HyperBlockKeyInv = Matrix(AffineHillKey).inv_mod(M).tolist()
+    CharAH = AffineHill(CharH, HyperBlockKeyInv, AffineHillB, M, 'D')
+    ReqLenM = len(base_repr(2 ** InitialBlockSize - 1, M))
+    CharM = GroupBlock(StringMatrix(ReduceDepth(ChangeShape(CharAH, '1X'))), ReqLenM)
     CharD = ChangeBase(CharM, 'M2D', M)
-    print(CharD)
     CharXOR = BlockXOR(CharD, XORKey)
-    print(CharXOR)
-    with open(DecryptedPath, 'w') as DecryptedFile:
-        for Row in CharXOR:
-            for Num in Row:
-                DecryptedFile.write(chr(Num))
-            DecryptedFile.write('\n')
+    # This part is used to write decrypted text file
+    # with open(DecryptedPath, 'w') as DecryptedFile:
+    #     for Row in CharXOR:
+    #         for Num in Row:
+    #             DecryptedFile.write(chr(Num))
+    #         DecryptedFile.write('\n')
+    with open(ASCIIDecryptedPath, 'w') as ASCIIDecryptedFile:
+        for i in range(len(CharXOR)):
+            for j in range(len(CharXOR[i])):
+                if CharXOR[i][j] == XORKey and j == len(CharXOR[i]) - 1:
+                    pass
+                else:
+                    ASCIIDecryptedFile.write(str(CharXOR[i][j]) + ' ')
+            ASCIIDecryptedFile.write('\n')
 
 
 def DiscoverKey():
